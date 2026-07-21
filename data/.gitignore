@@ -1,0 +1,8 @@
+# ignore the corpus data but not the directories
+corpus/*
+processed/*
+indexes/*
+
+!corpus/.gitkeep
+!processed/.gitkeep
+!indexes/.gitkeep
