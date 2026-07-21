@@ -16,6 +16,7 @@ keys rather than globbing the corpus directory.
 
 Run this file using `python -m src.fetch_corpus` from the project root.
 """
+
 import io
 import json
 import sys
@@ -113,11 +114,11 @@ def main() -> None:
             marker, ext = matched
             subpath = marker.strip("/")  # e.g. docs/pages/material-ui/api
 
-            rel = member.name.split(marker, 1)[1]      # components/buttons/buttons.md
+            rel = member.name.split(marker, 1)[1]  # components/buttons/buttons.md
             # Original path inside the repo, minus the top-level version dir.
-            source_path = f"{subpath}/{rel}"
+            url = f"{subpath}/{rel}"
             parts = Path(rel).parts
-            base = Path(rel).name                       # buttons.md / button.json
+            base = Path(rel).name  # buttons.md / button.json
 
             # Flat filename; disambiguate collisions with the parent folder name.
             flat = base
@@ -136,7 +137,7 @@ def main() -> None:
             counts[ext] += 1
 
             manifest[flat] = {
-                "source_path": source_path,
+                "url": url,
                 "doc_type": _doc_type_for(subpath),
             }
 

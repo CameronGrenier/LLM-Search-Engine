@@ -8,8 +8,8 @@ TAG = "v9.2.0"
 #   - markdown prose/usage docs  -> conceptual & multi-hop questions
 #   - API reference JSON (props) -> factoid questions (defaults, types)
 KEEP_SUBPATHS = {
-  "docs/data/material/": ".md",
-  "docs/pages/material-ui/api/": ".json",
+    "docs/data/material/": ".md",
+    "docs/pages/material-ui/api/": ".json",
 }
 
 # --- Paths (shared by every stage) ---
