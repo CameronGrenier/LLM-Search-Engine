@@ -16,7 +16,7 @@ keys rather than globbing the corpus directory.
 
 Run this file using `python -m src.fetch_corpus` from the project root.
 """
-
+from __future__ import annotations
 import io
 import json
 import sys

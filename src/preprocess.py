@@ -6,7 +6,7 @@ title/component from frontmatter or API JSON, strips MUI template
 directives and embedded HTML from markdown (or flattens API JSON into
 prose), assigns deterministic doc_ids, and writes docs.jsonl.
 """
-
+from __future__ import annotations
 import html
 from pathlib import Path
 import re
@@ -107,21 +107,23 @@ def strip_template_directives(text: str) -> str:
 
 
 def strip_html(text: str) -> str:
-    """Strips embedded HTML tags from markdown body text, keeping content.
+    """Remove embedded HTML while preserving Markdown line structure.
 
-    Handles cases like ``<p class="description">Buttons let users...</p>``,
-    keeping the inner text and discarding the markup.
-
-    Args:
-      text: Markdown body text (directives already stripped).
-
-    Returns:
-      Plain text with HTML tags removed and their content preserved.
+    Markdown headings and paragraph boundaries must remain on separate
+    lines so the chunking stage can split documents by headings.
     """
-    soup = BeautifulSoup(text, "html.parser")
-    for bad_tag in soup(["script", "style"]):
-        bad_tag.decompose()
-    return soup.get_text(separator=" ", strip=True)
+    cleaned = re.sub(
+        r"<(script|style)\b[^>]*>.*?</\1>",
+        "",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    cleaned = re.sub(r"<[^>]+>", "", cleaned)
+    cleaned = html.unescape(cleaned)
+    lines = [line.rstrip() for line in cleaned.splitlines()]
+    cleaned = "\n".join(lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 # ============================================================
