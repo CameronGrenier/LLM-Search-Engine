@@ -1,4 +1,5 @@
 # LLM-Search-Engine
+use python 3.12
 ## Project Structure
 ```
 root/
