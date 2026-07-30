@@ -16,7 +16,7 @@ keys rather than globbing the corpus directory.
 
 Run this file using `python -m src.fetch_corpus` from the project root.
 """
-
+from __future__ import annotations
 import io
 import json
 import sys
@@ -83,7 +83,7 @@ def _download(url: str) -> bytes:
     return buf.getvalue()
 
 
-def main() -> None:
+def fetch_corpus() -> None:
     url = f"https://codeload.github.com/{REPO}/tar.gz/refs/tags/{TAG}"
     raw = _download(url)
 
@@ -154,4 +154,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    fetch_corpus()
