@@ -33,6 +33,39 @@ HEADINGS_PER_CHUNK = 2
 OVERLAP_HEADING = 1
 
 
+DEMO_MARKER_RE = re.compile(r"\[\[DEMO:([^\]]+)\]\]")
+
+
+def strip_demo_markers(text: str) -> tuple[str, list[tuple[int, str]]]:
+    """Removes demo markers from document text, recording their positions.
+
+    Markers must come out before sectioning so that char offsets index into
+    the same string the dense indexer embeds. Positions are returned in the
+    coordinate space of the cleaned text, letting each chunk claim the demos
+    that fall inside its own span.
+
+    Args:
+      text: Normalized document text containing [[DEMO:...]] markers.
+
+    Returns:
+      A tuple of (clean_text, positions) where positions is a list of
+      (char_offset_in_clean_text, demo_id) in document order.
+    """
+    positions: list[tuple[int, str]] = []
+    out: list[str] = []
+    cursor = 0
+    written = 0
+
+    for match in DEMO_MARKER_RE.finditer(text):
+        out.append(text[cursor : match.start()])
+        written += match.start() - cursor
+        positions.append((written, match.group(1)))
+        cursor = match.end()
+
+    out.append(text[cursor:])
+    return "".join(out), positions
+
+
 def document_read(path_input: Path) -> list[dict[str, Any]]:
     documents: list[dict[str, Any]] = []
     with open(path_input, "r", encoding="utf-8") as file_input:
@@ -201,6 +234,16 @@ def record_chunk(
         id_chunk = f"{id_document}__chunk_{index_chunk:04d}"
     metadata_chunk = dict(document.get("metadata", {}))
     metadata_chunk["headings"] = section_heading
+    # Demos whose original position falls inside this chunk's span. Computed
+    # from spans rather than text so a chunk claims exactly the demos it
+    # would have contained, including where oversize splitting divided a
+    # section between parts.
+    refs: list[str] = []
+    if char_start is not None and char_end is not None:
+        for pos, demo_id in document.get("_demo_positions", []):
+            if char_start <= pos < char_end and demo_id not in refs:
+                refs.append(demo_id)
+    metadata_chunk["demo_refs"] = refs
     metadata_chunk["chunk_index"] = index_chunk
     if index_split is not None:
         metadata_chunk["split_index"] = index_split
@@ -297,10 +340,12 @@ def document_chunks(
     chunk_store: list[dict[str, Any]] = []
     for doc in documents:
         doc_txt = normalize(str(doc.get("text", "")))
-        if not doc_txt:
+        doc_txt, demo_positions = strip_demo_markers(doc_txt)
+        if not doc_txt.strip():
             print(f"Skipping empty document: {doc['doc_id']}")
             continue
         doc["text"] = doc_txt
+        doc["_demo_positions"] = demo_positions
         doc_type = doc.get("metadata", {}).get("doc_type")
         if "api" != doc_type:
             temp = prose_chunk(doc)

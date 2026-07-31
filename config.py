@@ -19,16 +19,23 @@ KEEP_SUBPATHS = {
     "docs/pages/material-ui/api/": ".json",
 }
 
+# File extensions of the demo files in the corpus
+DEMO_EXTS = {".js", ".tsx"}
+
 # --- Paths (shared by every stage) ---
-DATA = Path("data")
-CORPUS_DIR = DATA / "corpus"
-PROCESSED_DIR = DATA / "processed"
+DATA_DIR = Path("data")
+CORPUS_DIR = DATA_DIR / "corpus"
+PROCESSED_DIR = DATA_DIR / "processed"
 MANIFEST_PATH = PROCESSED_DIR / "manifest.json"
 CHUNKS_PATH = PROCESSED_DIR / "chunks.jsonl"
 DOCS_PATH = PROCESSED_DIR / "docs.jsonl"
-INDEX_DIR = DATA / "indexes"
-EVAL_PATH = DATA / "eval" / "gold.jsonl"
+INDEX_DIR = DATA_DIR / "indexes"
+EVAL_PATH = DATA_DIR / "eval" / "gold.jsonl"
 RESULTS_DIR = Path("results")
+TARBALL_PATH = DATA_DIR / "cache" / f"{TAG}.tar.gz"
+DEMOS_PATH = PROCESSED_DIR / "demos.jsonl"
+QUESTIONS_PATH = DATA_DIR / "questions.jsonl"
+ANSWERS_PATH = PROCESSED_DIR / "answers.jsonl"
 
 # --- Dense retrieval ---
 EMBEDDING_MODEL = "jinaai/jina-embeddings-v3-hf"
@@ -47,6 +54,9 @@ DENSE_INDEX_ID_MAPPING = INDEX_DIR / "dense_ids.json"
 PASSAGE_ADAPTER = "retrieval_passage"
 QUERY_ADAPTER = "retrieval_query"
 ADAPTER_ENV_VAR = "JINA_ADAPTER"
+
+# --- LLM Model ---
+GENERATION_MODEL = "Qwen/Qwen2.5-3B-Instruct"
 
 # Model position limit is 8192. A margin is left for the added CLS and SEP.
 MAX_CONTEXT_TOKENS = 8000

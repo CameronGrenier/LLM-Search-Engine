@@ -1,6 +1,7 @@
 # LLM-Search-Engine
-use python 3.12
+
 ## Project Structure
+
 ```
 root/
 ├── README.md                  # setup + execution instructions (spec requires)
@@ -38,3 +39,19 @@ root/
 │
 └── report/                    # the 3-4 page PDF + LaTeX source
 ```
+
+## Running the project
+
+- use python 3.12
+- create virtual environment and download requirements
+- fetch the corpus
+    - run `python -m src.fetch_corpus`
+- run the preprocessing
+    - run `python -m src.preprocess`
+- create chunks
+    - run `python -m src.chunk`
+- create indexes
+    - Dense: run `python -m src.retrieval.dense`
+    - BM25: run `python -m src.retrieval.bm25`
+- run questionnaire
+    - run `python -m src.llm.llm`

@@ -1,0 +1,10 @@
+{"question_id": 1, "question_text": "Does Material UI include a Menubar component out of the box, and what do I need to install to use the menubar shown in the docs?"}
+{"question_id": 2, "question_text": "Which prop keeps the CircularProgress track visible at all times?"}
+{"question_id": 3, "question_text": "From which Material UI version is the loading prop available on Button?"}
+{"question_id": 4, "question_text": "Why does showing a tooltip on touch devices require a long press?"}
+{"question_id": 5, "question_text": "How do I customize the surplus avatar in an AvatarGroup, and what argument does the callback receive?"}
+{"question_id": 6, "question_text": "Which Badge prop caps large numeric values, and what value does it cap at by default?"}
+{"question_id": 7, "question_text": "Which prop limits how many avatars an AvatarGroup shows, and what is its default value?"}
+{"question_id": 8, "question_text": "Which Rating prop sets the minimum increment the value can change by, and what is that prop's default?"}
+{"question_id": 9, "question_text": "Which Slider prop controls stepping with Page Up/Down or Shift plus arrow keys, and what is its default compared to the default step?"}
+{"question_id": 10, "question_text": "Masonry orders its children by row. Which component should I use instead to order images by column, and what determines the container heights there?"}
