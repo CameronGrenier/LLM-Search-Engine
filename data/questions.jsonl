@@ -8,3 +8,6 @@
 {"question_id": 8, "question_text": "Which Rating prop sets the minimum increment the value can change by, and what is that prop's default?"}
 {"question_id": 9, "question_text": "Which Slider prop controls stepping with Page Up/Down or Shift plus arrow keys, and what is its default compared to the default step?"}
 {"question_id": 10, "question_text": "Masonry orders its children by row. Which component should I use instead to order images by column, and what determines the container heights there?"}
+{"question_id": 11, "question_text": "What does the type prop do in the Card MUI component?"}
+{"question_id": 12, "question_text": "How do I use the TreeView MUI component?"}
+{"question_id": 13, "question_text": "The MUI Button component comes with four variants: text, contained, outlined, and one other. What is this fourth variant?"}

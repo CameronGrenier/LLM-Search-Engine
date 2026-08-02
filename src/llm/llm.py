@@ -1,13 +1,13 @@
 """Batch question answering, with and without retrieved context.
 
 Reads questions from config.QUESTIONS_PATH and writes one answer record
-per (question, mode) pair to config.ANSWERS_PATH.
+per (question, mode, retriever) triple to config.ANSWERS_PATH.
 
-Retriever selection is a module-level flag so the dense and sparse arms
-of the evaluation run through identical prompt assembly and identical
-output formatting. Any difference in the resulting answers is then
-attributable to retrieval alone, which is what makes the comparison
-meaningful.
+The rag mode runs once per retriever in RETRIEVERS_TO_RUN, so a single
+invocation produces every arm of the comparison. All arms share identical
+prompt assembly and identical output formatting, so any difference in the
+resulting answers is attributable to retrieval alone, which is what makes
+the comparison meaningful.
 
 Run from the project root with:
     python -m src.llm.llm
@@ -48,9 +48,10 @@ from src.retrieval.bm25 import bm25_search  # noqa: E402
 # Run configuration
 # ============================================================
 
-# "dense" or "bm25". Selects which retriever supplies context for the
-# rag mode. Naive mode ignores it.
-RETRIEVER = "dense"
+# Which retrievers supply context for the rag mode. Each one produces its
+# own rag record per question, so the arms can be compared directly. Naive
+# mode ignores this. Narrow it to a single entry to run one arm.
+RETRIEVERS_TO_RUN = ("dense", "bm25")
 
 # Which arms to run per question. Naive is the ungrounded control: it
 # isolates how much of a correct answer came from retrieval rather than
@@ -359,7 +360,8 @@ def answer_naive(question: dict) -> dict:
     """
     answer_text = ask(NAIVE_SYSTEM, question["question_text"])
     return {
-        "answer_id": question["question_id"],
+        "answer_id": f"{question['question_id']}-naive",
+        "question_id": question["question_id"],
         "question_text": question["question_text"],
         "mode": "naive",
         "retriever": None,
@@ -390,7 +392,8 @@ def answer_rag(question: dict, retriever: str, k: int = TOP_K) -> dict:
     answer_text = ask(RAG_SYSTEM, prompt)
 
     return {
-        "answer_id": question["question_id"],
+        "answer_id": f"{question['question_id']}-rag-{retriever}",
+        "question_id": question["question_id"],
         "question_text": question["question_text"],
         "mode": "rag",
         "retriever": retriever,
@@ -420,37 +423,54 @@ def write_answers(records: list[dict], out_path: Path) -> None:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def run(retriever: str = RETRIEVER, modes: tuple[str, ...] = MODES) -> None:
+def run(
+    retrievers: tuple[str, ...] = RETRIEVERS_TO_RUN,
+    modes: tuple[str, ...] = MODES,
+) -> None:
     """Answers every question in the question set and writes the results.
 
+    The rag mode runs once per retriever, so each question yields one naive
+    record plus one rag record per retriever. Every arm is written to the
+    same file, distinguished by the mode and retriever fields.
+
     Args:
-      retriever: Which retriever supplies context for the rag mode.
+      retrievers: Which retrievers supply context for the rag mode.
       modes: Which arms to run per question.
 
     Returns:
       None. Writes config.ANSWERS_PATH as a side effect.
 
     Raises:
-      ValueError: If retriever is not a known key.
+      ValueError: If any entry of retrievers is not a known key.
     """
-    if retriever not in RETRIEVERS:
+    unknown = [r for r in retrievers if r not in RETRIEVERS]
+    if unknown:
         raise ValueError(
-            f"Unknown retriever '{retriever}'. Choose from {list(RETRIEVERS)}"
+            f"Unknown retriever(s) {unknown}. Choose from {list(RETRIEVERS)}"
         )
 
     questions = load_questions(QUESTIONS_PATH)
     print(f"Loaded {len(questions)} questions from {QUESTIONS_PATH}")
-    print(f"Retriever: {retriever}   modes: {', '.join(modes)}   k={TOP_K}")
+    print(
+        f"Retrievers: {', '.join(retrievers)}   "
+        f"modes: {', '.join(modes)}   k={TOP_K}"
+    )
+
+    # One naive record per question, plus one rag record per retriever.
+    per_question = [("naive", None)] if "naive" in modes else []
+    if "rag" in modes:
+        per_question += [("rag", retriever) for retriever in retrievers]
 
     records: list[dict] = []
-    total = len(questions) * len(modes)
+    total = len(questions) * len(per_question)
     done = 0
 
     for question in questions:
-        for mode in modes:
+        for mode, retriever in per_question:
             done += 1
+            label = mode if retriever is None else f"{mode}/{retriever}"
             sys.stdout.write(
-                f"\r  [{done}/{total}] q{question['question_id']} ({mode})".ljust(60)
+                f"\r  [{done}/{total}] q{question['question_id']} ({label})".ljust(60)
             )
             sys.stdout.flush()
 
@@ -463,12 +483,6 @@ def run(retriever: str = RETRIEVER, modes: tuple[str, ...] = MODES) -> None:
 
     write_answers(records, ANSWERS_PATH)
 
-    n_rag = sum(1 for r in records if r["mode"] == "rag")
-    n_grounded = sum(
-        1
-        for r in records
-        if r["mode"] == "rag" and any(c["cited_in_text"] for c in r["citations"])
-    )
     n_idk = sum(
         1
         for r in records
@@ -476,7 +490,19 @@ def run(retriever: str = RETRIEVER, modes: tuple[str, ...] = MODES) -> None:
     )
 
     print(f"Wrote {len(records)} answers to {ANSWERS_PATH}")
-    print(f"  RAG answers with at least one inline citation: {n_grounded}/{n_rag}")
+    for retriever in retrievers:
+        arm = [
+            r for r in records if r["mode"] == "rag" and r["retriever"] == retriever
+        ]
+        if not arm:
+            continue
+        n_grounded = sum(
+            1 for r in arm if any(c["cited_in_text"] for c in r["citations"])
+        )
+        print(
+            f"  {retriever}: RAG answers with at least one inline citation: "
+            f"{n_grounded}/{len(arm)}"
+        )
     print(f"  Answers declining to answer: {n_idk}")
 
 

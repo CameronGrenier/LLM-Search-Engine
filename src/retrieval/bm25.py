@@ -7,20 +7,19 @@ import re
 from collections import Counter
 from config import CHUNKS_PATH, BM25_INDEX_PATH
 from src.corpus_io import load_chunks
-from src.retrieval.base import Retriever
 
 K1 = 1.5
 B = 0.75
-#k1 controls how much term freq will affect score
-#B controls doc length normalization factor
+# k1 controls how much term freq will affect score
+# B controls doc length normalization factor
 
 
 def text_tokenize(text: str) -> list[str]:
-    #this converts text to lowercase so no matching issues
+    # this converts text to lowercase so no matching issues
     return re.findall(r"\b\w+\b", text.lower())
 
 
-class BM25Retriever(Retriever):
+class BM25Retriever():
     def __init__(self, data_chunks):
         self.chunks = data_chunks
         self.list_term_freq = []
@@ -30,8 +29,8 @@ class BM25Retriever(Retriever):
         self.index_create()
 
     def index_create(self):
-        #this will make inverted index that bm25 will use
-        #each chunk is treated as a document for retrieval
+        # this will make inverted index that bm25 will use
+        # each chunk is treated as a document for retrieval
         doc_total_length = 0
 
         for chunk_data in self.chunks:
@@ -44,7 +43,7 @@ class BM25Retriever(Retriever):
             doc_total_length += len(tokens)
 
             for term in count_terms:
-                #this is for idf so we can give more weight to rare terms
+                # this is for idf so we can give more weight to rare terms
                 self.doc_freq[term] += 1
 
         self.avg_doc_length = doc_total_length / len(self.chunks)
@@ -52,8 +51,8 @@ class BM25Retriever(Retriever):
     def calculate_idf(self, term):
         count_doc = len(self.chunks)
 
-        #common terms will have low score as less informative
-        #high importance to rare terms
+        # common terms will have low score as less informative
+        # high importance to rare terms
         count_term_doc = self.doc_freq.get(term, 0)
 
         if count_term_doc == 0:
@@ -72,22 +71,19 @@ class BM25Retriever(Retriever):
 
         for term in query_tokens:
 
-            #finds bm25 score between one query and one chunk
+            # finds bm25 score between one query and one chunk
             if term not in term_count:
                 continue
 
             term_frequency = term_count[term]
             idf = self.calculate_idf(term)
 
-            #term freq of bm25 formula
+            # term freq of bm25 formula
             numerator = term_frequency * (K1 + 1)
 
-            #this will normalize score so longer docs arent ranked higher
-            denominator = (
-                term_frequency
-                + K1 * (
-                    1 - B + B * (document_length / self.avg_doc_length)
-                )
+            # this will normalize score so longer docs arent ranked higher
+            denominator = term_frequency + K1 * (
+                1 - B + B * (document_length / self.avg_doc_length)
             )
 
             score_bm25 += idf * (numerator / denominator)
@@ -98,24 +94,16 @@ class BM25Retriever(Retriever):
 
         query_tokens = text_tokenize(query)
 
-        #finds bm25 score for each chunk and ranks high to low
+        # finds bm25 score for each chunk and ranks high to low
         scores_docs = []
 
         for index in range(len(self.chunks)):
 
-            score = self.score_calculation(
-                query_tokens,
-                index
-            )
+            score = self.score_calculation(query_tokens, index)
 
-            scores_docs.append(
-                (index, score)
-            )
+            scores_docs.append((index, score))
 
-        scores_docs.sort(
-            key=lambda item: item[1],
-            reverse=True
-        )
+        scores_docs.sort(key=lambda item: item[1], reverse=True)
 
         results = []
 
@@ -138,7 +126,7 @@ class BM25Retriever(Retriever):
         return self.search(query, k)
 
     def save_index(self):
-        #save only the BM25 data, not the whole class
+        # save only the BM25 data, not the whole class
 
         index_data = {
             "chunks": self.chunks,
@@ -154,7 +142,7 @@ class BM25Retriever(Retriever):
     @classmethod
     def load_index(cls):
 
-        #this will load the previous generated bm25 index
+        # this will load the previous generated bm25 index
 
         with open(BM25_INDEX_PATH, "rb") as file:
             index_data = pickle.load(file)
@@ -196,7 +184,7 @@ def bm25_search(query: str, k: int = 3) -> list[dict]:
 
 if __name__ == "__main__":
 
-    #check if index is available then reuse it otherwise make new
+    # check if index is available then reuse it otherwise make new
 
     if BM25_INDEX_PATH.exists():
 
@@ -218,30 +206,24 @@ if __name__ == "__main__":
 
         print("BM25 index saved")
 
+    print("Indexed documents:", len(retriever.chunks))
 
-    print(
-        "Indexed documents:",
-        len(retriever.chunks)
-    )
+    print("Average document length:", retriever.avg_doc_length)
 
-    print(
-        "Average document length:",
-        retriever.avg_doc_length
-    )
+    print("Unique terms:", len(retriever.doc_freq))
 
-    print(
-        "Unique terms:",
-        len(retriever.doc_freq)
-    )
-
-
-    final = retriever.retrieve(
-        "accordion component"
-    )
-
+    final = retriever.retrieve("accordion component")
 
     for temp in final[:3]:
 
         print("\nCHUNK:", temp["chunk_id"])
         print("SCORE:", temp["score"])
         print("TEXT:", temp["text"][:200])
+
+
+def create_bm25_index():
+    """Build the BM25 index over the chunk corpus and persist it."""
+    chunks, _, _ = load_chunks(CHUNKS_PATH)
+    retriever = BM25Retriever(chunks)
+    retriever.save_index()
+    print(f"bm25 index build complete ({len(chunks)} chunks)")
