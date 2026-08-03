@@ -1,0 +1,272 @@
+{
+  "system": "bm25",
+  "cutoff": 5,
+  "mrr_ranking_depth": 2140,
+  "total_gold_questions": 13,
+  "evaluated_answerable_questions": 10,
+  "excluded_unanswerable_questions": 3,
+  "aggregate": {
+    "precision_at_5": 0.16,
+    "recall_at_5": 0.65,
+    "mrr": 0.6735691688236985,
+    "ndcg_at_5": 0.5839441578296375
+  },
+  "questions": [
+    {
+      "question_id": 1,
+      "question_type": "factoid",
+      "question_text": "Does Material UI include a Menubar component out of the box, and what do I need to install to use the menubar shown in the docs?",
+      "gold_chunk_ids": [
+        "prose__menubar__chunk_0001"
+      ],
+      "top_k_chunk_ids": [
+        "prose__menubar__chunk_0001",
+        "prose__menubar__chunk_0002",
+        "prose__menubar__chunk_0003",
+        "prose__faq__chunk_0013",
+        "prose__number-field__chunk_0001"
+      ],
+      "gold_ranks": {
+        "prose__menubar__chunk_0001": 1
+      },
+      "first_relevant_rank": 1,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 1.0,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_5": 1.0
+      }
+    },
+    {
+      "question_id": 2,
+      "question_type": "factoid",
+      "question_text": "Which prop keeps the CircularProgress track visible at all times?",
+      "gold_chunk_ids": [
+        "prose__progress__chunk_0007"
+      ],
+      "top_k_chunk_ids": [
+        "prose__progress__chunk_0007",
+        "prose__progress__chunk_0006",
+        "prose__bottom-navigation__chunk_0002",
+        "prose__bottom-navigation__chunk_0001",
+        "prose__material-ui-sync__chunk_0006__part_002"
+      ],
+      "gold_ranks": {
+        "prose__progress__chunk_0007": 1
+      },
+      "first_relevant_rank": 1,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 1.0,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_5": 1.0
+      }
+    },
+    {
+      "question_id": 3,
+      "question_type": "factoid",
+      "question_text": "From which Material UI version is the loading prop available on Button?",
+      "gold_chunk_ids": [
+        "prose__buttons__chunk_0015"
+      ],
+      "top_k_chunk_ids": [
+        "prose__upgrade-to-v6__chunk_0026",
+        "prose__upgrade-to-v6__chunk_0027",
+        "prose__buttons__chunk_0015",
+        "prose__button-group__chunk_0007",
+        "prose__upgrade-to-v6__chunk_0009"
+      ],
+      "gold_ranks": {
+        "prose__buttons__chunk_0015": 3
+      },
+      "first_relevant_rank": 3,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 1.0,
+        "reciprocal_rank": 0.3333333333333333,
+        "ndcg_at_5": 0.5
+      }
+    },
+    {
+      "question_id": 4,
+      "question_type": "factoid",
+      "question_text": "Why does showing a tooltip on touch devices require a long press?",
+      "gold_chunk_ids": [
+        "prose__tooltips__chunk_0009"
+      ],
+      "top_k_chunk_ids": [
+        "prose__speed-dial__chunk_0005",
+        "prose__speed-dial__chunk_0006",
+        "prose__tooltips__chunk_0009",
+        "prose__tooltips__chunk_0008",
+        "prose__usage__usage__chunk_0003"
+      ],
+      "gold_ranks": {
+        "prose__tooltips__chunk_0009": 3
+      },
+      "first_relevant_rank": 3,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 1.0,
+        "reciprocal_rank": 0.3333333333333333,
+        "ndcg_at_5": 0.5
+      }
+    },
+    {
+      "question_id": 5,
+      "question_type": "factoid",
+      "question_text": "How do I customize the surplus avatar in an AvatarGroup, and what argument does the callback receive?",
+      "gold_chunk_ids": [
+        "prose__avatars__chunk_0009"
+      ],
+      "top_k_chunk_ids": [
+        "prose__avatars__chunk_0009",
+        "prose__avatars__chunk_0010",
+        "prose__migrating-from-deprecated-apis__chunk_0024",
+        "prose__upgrade-to-v9__chunk_0032",
+        "prose__faq__chunk_0013"
+      ],
+      "gold_ranks": {
+        "prose__avatars__chunk_0009": 1
+      },
+      "first_relevant_rank": 1,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 1.0,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_5": 1.0
+      }
+    },
+    {
+      "question_id": 6,
+      "question_type": "factoid",
+      "question_text": "Which Badge prop caps large numeric values, and what value does it cap at by default?",
+      "gold_chunk_ids": [
+        "api__badge__chunk_0001"
+      ],
+      "top_k_chunk_ids": [
+        "prose__badges__chunk_0005",
+        "prose__badges__chunk_0006",
+        "prose__avatars__chunk_0011",
+        "prose__palette__chunk_0008",
+        "prose__text-fields__chunk_0022"
+      ],
+      "gold_ranks": {
+        "api__badge__chunk_0001": 19
+      },
+      "first_relevant_rank": 19,
+      "metrics": {
+        "precision_at_5": 0.0,
+        "recall_at_5": 0.0,
+        "reciprocal_rank": 0.05263157894736842,
+        "ndcg_at_5": 0.0
+      }
+    },
+    {
+      "question_id": 7,
+      "question_type": "factoid",
+      "question_text": "Which prop limits how many avatars an AvatarGroup shows, and what is its default value?",
+      "gold_chunk_ids": [
+        "api__avatar-group__chunk_0001"
+      ],
+      "top_k_chunk_ids": [
+        "prose__avatars__chunk_0008",
+        "prose__avatars__chunk_0007",
+        "prose__v5-component-changes__chunk_0019",
+        "prose__api__chunk_0008",
+        "prose__dividers__chunk_0010"
+      ],
+      "gold_ranks": {
+        "api__avatar-group__chunk_0001": 61
+      },
+      "first_relevant_rank": 61,
+      "metrics": {
+        "precision_at_5": 0.0,
+        "recall_at_5": 0.0,
+        "reciprocal_rank": 0.01639344262295082,
+        "ndcg_at_5": 0.0
+      }
+    },
+    {
+      "question_id": 8,
+      "question_type": "multi-hop",
+      "question_text": "Which Rating prop sets the minimum increment the value can change by, and what is that prop's default?",
+      "gold_chunk_ids": [
+        "prose__rating__chunk_0002",
+        "api__rating__chunk_0001"
+      ],
+      "top_k_chunk_ids": [
+        "prose__rating__chunk_0002",
+        "prose__rating__chunk_0003",
+        "prose__slider__chunk_0005",
+        "prose__slider__chunk_0004",
+        "prose__v5-component-changes__chunk_0116"
+      ],
+      "gold_ranks": {
+        "prose__rating__chunk_0002": 1,
+        "api__rating__chunk_0001": 23
+      },
+      "first_relevant_rank": 1,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 0.5,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_5": 0.6131471927654584
+      }
+    },
+    {
+      "question_id": 9,
+      "question_type": "multi-hop",
+      "question_text": "Which Slider prop controls stepping with Page Up/Down or Shift plus arrow keys, and what is its default compared to the default step?",
+      "gold_chunk_ids": [
+        "prose__slider__chunk_0004",
+        "api__slider__chunk_0001"
+      ],
+      "top_k_chunk_ids": [
+        "prose__slider__chunk_0004",
+        "prose__slider__chunk_0005",
+        "prose__upgrade-to-v9__chunk_0020",
+        "prose__upgrade-to-v9__chunk_0021",
+        "prose__palette__chunk_0009"
+      ],
+      "gold_ranks": {
+        "prose__slider__chunk_0004": 1,
+        "api__slider__chunk_0001": 111
+      },
+      "first_relevant_rank": 1,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 0.5,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_5": 0.6131471927654584
+      }
+    },
+    {
+      "question_id": 10,
+      "question_type": "multi-hop",
+      "question_text": "Masonry orders its children by row. Which component should I use instead to order images by column, and what determines the container heights there?",
+      "gold_chunk_ids": [
+        "prose__masonry__chunk_0002",
+        "prose__image-list__chunk_0004"
+      ],
+      "top_k_chunk_ids": [
+        "prose__masonry__chunk_0002",
+        "prose__masonry__chunk_0003",
+        "prose__masonry__chunk_0001",
+        "prose__grid__chunk_0012",
+        "prose__table__chunk_0002"
+      ],
+      "gold_ranks": {
+        "prose__masonry__chunk_0002": 1,
+        "prose__image-list__chunk_0004": 8
+      },
+      "first_relevant_rank": 1,
+      "metrics": {
+        "precision_at_5": 0.2,
+        "recall_at_5": 0.5,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_5": 0.6131471927654584
+      }
+    }
+  ]
+}
