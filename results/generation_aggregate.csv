@@ -1,0 +1,4 @@
+arm,count,exact_match,mean_token_f1,answerable_mean_token_f1,unanswerable_exact_refusal_accuracy,exact_refusal_count,context_supported_count,context_unsupported_count,support_gate_accuracy,supported_answer_rate,unsupported_refusal_rate,unsupported_answer_rate,supported_refusal_rate,non_refusal_inline_citation_rate,mean_citation_precision,mean_citation_recall,invalid_citation_answer_count
+naive,13,0.0,0.4346885681968456,0.5650951386558992,0.0,0,,,,,,,,,,,
+rag_bm25,13,0.23076923076923078,0.5254972146497571,0.3831463790446842,1.0,6,5,8,0.8461538461538461,1.0,0.75,0.15384615384615385,0.0,1.0,0.5,0.35,0
+rag_dense,13,0.15384615384615385,0.6258639047637293,0.6136230761928482,0.6666666666666666,3,7,6,0.7692307692307693,1.0,0.5,0.23076923076923078,0.0,1.0,0.5,0.5,0

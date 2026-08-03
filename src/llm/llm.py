@@ -82,14 +82,62 @@ TOKENIZER = AutoTokenizer.from_pretrained(GENERATION_MODEL)
 MODEL.eval()
 
 
-RAG_SYSTEM = """You answer questions about Material UI using only the numbered passages provided.
+GROUNDED_ANSWER_SYSTEM = """Answer the question using only the supplied numbered passages.
 
 Rules:
-- Use only information stated in the passages. Do not use prior knowledge about Material UI.
-- Cite the passage number inline after each claim, like [2]. Cite every claim.
-- If the passages do not contain the answer, reply exactly: I don't know.
-- Do not guess prop names, default values, or types that are not stated in the passages.
-- Keep the answer to a few sentences."""
+- Answer every part of the question that is explicitly supported.
+- Place an inline citation such as [1] immediately after every factual sentence.
+- Use only passage numbers that were supplied.
+- Do not use prior knowledge.
+- Do not infer prop names, defaults, variants, or component behaviour from related components.
+- Do not treat a passing mention, dependency list, or example name as an answer.
+- Keep the answer concise."""
+
+
+VERIFY_SYSTEM = """Verify the candidate answer using only the cited numbered passages.
+
+Reply exactly YES only when all of the following are true:
+- Every factual claim is explicitly supported by a cited passage.
+- The candidate addresses every part of the question.
+- The cited passages concern the same component, prop, or feature asked about.
+- The candidate does not infer an answer from a passing mention, dependency list, or related component.
+
+Otherwise reply exactly NO.
+Do not explain the decision."""
+
+
+UNCERTAINTY_RE = re.compile(
+    r"\b("
+    r"i don['’]?t know|"
+    r"cannot (?:determine|answer|tell)|"
+    r"can['’]?t (?:determine|answer|tell)|"
+    r"insufficient (?:information|evidence)|"
+    r"not enough (?:information|evidence)|"
+    r"do not contain (?:information|an answer)|"
+    r"does not contain (?:information|an answer)|"
+    r"does not exist|"
+    r"does not explicitly mention|"
+    r"is not (?:stated|specified|mentioned|provided)|"
+    r"are not (?:stated|specified|mentioned|provided)|"
+    r"no (?:relevant )?(?:information|evidence) is provided"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+SUSPICIOUS_RE = re.compile(
+    r"\b("
+    r"one other|"
+    r"four variants|"
+    r"floating action button|"
+    r"refer to the following steps|"
+    r"ensure your project includes|"
+    r"based on the provided information|"
+    r"according to the provided passages"
+    r")\b",
+    re.IGNORECASE,
+)
+
 
 NAIVE_SYSTEM = (
     "Answer the question about Material UI as accurately as you can. "
@@ -216,23 +264,27 @@ def hydrate(chunk: dict, demos: dict[str, dict]) -> str:
 
 
 def format_context(results: list[dict], demos: dict[str, dict]) -> str:
-    """Formats retrieved chunks as numbered passages for the prompt.
+    """Format retrieved raw chunks as numbered passages.
 
-    Passage numbers are 1-based and positional, so passage n corresponds
-    to results[n - 1]. That correspondence is what lets the inline [n]
-    markers in the answer be resolved back to chunk ids.
+    Demo source is not reattached because large code samples add repeated and
+    unrelated content to the generation prompt.
 
     Args:
       results: Result dicts from a retrieval function.
-      demos: The demo store from load_demos.
+      demos: Retained for compatibility with existing callers; unused.
 
     Returns:
-      A numbered passage block with chunk ids retained for traceability.
+      Numbered raw chunk passages with chunk IDs retained for traceability.
     """
+    _ = demos
     blocks = []
+
     for number, result in enumerate(results, start=1):
-        body = hydrate(result, demos)
-        blocks.append(f"[{number}] ({result['chunk_id']})\n{body}")
+        blocks.append(
+            f"[{number}] ({result['chunk_id']})\n"
+            f"{result['text']}"
+        )
+
     return "\n\n".join(blocks)
 
 
@@ -370,26 +422,103 @@ def answer_naive(question: dict) -> dict:
     }
 
 
+def candidate_needs_verification(
+    question_text: str,
+    candidate: str,
+    results: list[dict],
+    cited_numbers: set[int],
+) -> bool:
+    """Return whether a candidate needs an additional grounding check."""
+    _ = question_text, results, cited_numbers
+
+    candidate_tokens = re.findall(r"\b\w+\b", candidate)
+
+    if len(candidate_tokens) < 6:
+        return True
+
+    return bool(SUSPICIOUS_RE.search(candidate))
+
+
 def answer_rag(question: dict, retriever: str, k: int = TOP_K) -> dict:
-    """Answers a question grounded in retrieved passages.
-
-    Args:
-      question: A question dict with question_id and question_text.
-      retriever: Key into RETRIEVERS, either "dense" or "bm25".
-      k: Number of passages to retrieve.
-
-    Returns:
-      An answer record naming the retriever used and its citations.
-    """
+    """Answer one question using conservative grounded generation."""
     search = RETRIEVERS[retriever]
     results = search(question["question_text"], k=k)
     context = format_context(results, DEMOS)
 
     if SHOW_CONTEXT:
-        print(f"\n--- context ({retriever})\n{context}\n--- end context\n")
+        print(
+            f"\n--- context ({retriever})\n"
+            f"{context}\n"
+            "--- end context\n"
+        )
 
-    prompt = f"Passages:\n{context}\n\nQuestion: {question['question_text']}"
-    answer_text = ask(RAG_SYSTEM, prompt)
+    candidate_prompt = (
+        f"Numbered passages:\n{context}\n\n"
+        f"Question:\n{question['question_text']}\n\n"
+        "Answer:"
+    )
+
+    candidate = ask(
+        GROUNDED_ANSWER_SYSTEM,
+        candidate_prompt,
+    ).strip()
+
+    cited_numbers = parse_cited_numbers(
+        candidate,
+        len(results),
+    )
+
+    verification = "NOT RUN"
+
+    if not candidate:
+        final_answer = "I don't know"
+        decision = "empty candidate"
+
+    elif UNCERTAINTY_RE.search(candidate):
+        final_answer = "I don't know"
+        decision = "uncertainty language"
+
+    elif not cited_numbers:
+        final_answer = "I don't know"
+        decision = "no valid inline citation"
+
+    elif candidate_needs_verification(
+        question["question_text"],
+        candidate,
+        results,
+        cited_numbers,
+    ):
+        cited_context = "\n\n".join(
+            (
+                f"[{number}] "
+                f"({results[number - 1]['chunk_id']})\n"
+                f"{results[number - 1]['text']}"
+            )
+            for number in sorted(cited_numbers)
+        )
+
+        verification_prompt = (
+            f"Question:\n{question['question_text']}\n\n"
+            f"Candidate answer:\n{candidate}\n\n"
+            f"Cited numbered passages:\n{cited_context}\n\n"
+            "Decision:"
+        )
+
+        verification = ask(
+            VERIFY_SYSTEM,
+            verification_prompt,
+        ).strip().upper()
+
+        if re.fullmatch(r"YES[.!]?", verification):
+            final_answer = candidate
+            decision = "accepted by verifier"
+        else:
+            final_answer = "I don't know"
+            decision = "rejected by verifier"
+
+    else:
+        final_answer = candidate
+        decision = "accepted without verifier"
 
     return {
         "answer_id": f"{question['question_id']}-rag-{retriever}",
@@ -397,8 +526,11 @@ def answer_rag(question: dict, retriever: str, k: int = TOP_K) -> dict:
         "question_text": question["question_text"],
         "mode": "rag",
         "retriever": retriever,
-        "answer_text": answer_text.strip(),
-        "citations": build_citations(results, answer_text),
+        "answer_text": final_answer,
+        "candidate_answer": candidate,
+        "verification": verification,
+        "decision": decision,
+        "citations": build_citations(results, final_answer),
     }
 
 
