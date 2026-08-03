@@ -47,6 +47,7 @@ from config import (
     CORPUS_DIR,
     PROCESSED_DIR,
     MANIFEST_PATH,
+    TARBALL_PATH,
 )
 
 

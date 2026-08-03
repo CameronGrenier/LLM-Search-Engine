@@ -90,6 +90,7 @@ from config import (  # noqa: E402
     QUERY_ADAPTER,
 )
 from src.corpus_io import load_chunks, load_docs  # noqa: E402
+from src.chunk import normalize, strip_demo_markers  # noqa: E402
 
 # Which adapter this process runs with. Indexing leaves the default in place;
 # the search entry point sets the variable before importing this module.
@@ -533,7 +534,8 @@ def create_embeddings():
     started = time.time()
 
     for doc_id, doc_chunks in tqdm(by_doc.items(), desc="embedding docs"):
-        doc_text = docs[doc_id]["text"]
+        normalized_text = normalize(docs[doc_id]["text"])
+        doc_text, _ = strip_demo_markers(normalized_text)
         for chunk_id, vector in embed_document(doc_text, doc_chunks, stats):
             chunk_ids.append(chunk_id)
             vectors.append(vector.numpy())
