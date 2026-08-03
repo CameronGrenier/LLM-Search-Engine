@@ -6,3 +6,4 @@ indexes/*
 !corpus/.gitkeep
 !processed/.gitkeep
 !indexes/.gitkeep
+cache/*
