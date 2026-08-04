@@ -78,6 +78,11 @@ def clean_derived_files() -> None:
     for path in DERIVED_PATHS:
         if path.is_dir():
             shutil.rmtree(path)
+
+            if path == Path("data/corpus"):
+                path.mkdir(parents=True, exist_ok=True)
+                (path / ".gitkeep").touch()
+
         elif path.exists():
             path.unlink()
 
