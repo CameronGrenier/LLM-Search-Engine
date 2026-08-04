@@ -350,7 +350,11 @@ def write_csv(
                 fields.append(key)
 
     with path.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fields)
+        writer = csv.DictWriter(
+            file,
+            fieldnames=fields,
+            lineterminator="\n",
+        )
         writer.writeheader()
 
         for record in records:
@@ -476,6 +480,32 @@ def main() -> None:
             "manual_completeness_0_to_2": "",
             "manual_notes": "",
         })
+
+    manual_fields = [
+        "manual_correctness_0_to_2",
+        "manual_groundedness_0_to_2",
+        "manual_completeness_0_to_2",
+        "manual_notes",
+    ]
+
+    if REVIEW_CSV.exists():
+        with REVIEW_CSV.open(
+            encoding="utf-8",
+            newline="",
+        ) as file:
+            existing_reviews = {
+                row["answer_id"]: row
+                for row in csv.DictReader(file)
+            }
+
+        for row in review_rows:
+            previous = existing_reviews.get(row["answer_id"])
+
+            if previous is None:
+                continue
+
+            for field in manual_fields:
+                row[field] = previous.get(field, "")
 
     write_csv(REVIEW_CSV, review_rows)
 
