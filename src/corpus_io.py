@@ -15,7 +15,7 @@ def load_docs(path):
       A dict mapping each doc_id to its full document dict.
     """
     docs = {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             doc = json.loads(line)
             docs[doc["doc_id"]] = doc
@@ -42,7 +42,7 @@ def load_chunks(path):
           file order, used to group chunks per document for late
           chunking.
     """
-    chunks = [json.loads(l) for l in open(path)]
+    chunks = [json.loads(l) for l in open(path, encoding="utf-8")]
     by_id = {c["chunk_id"]: c for c in chunks}  # citations, retrieval lookup
     by_doc = defaultdict(list)  # late-chunking grouping
     for c in chunks:

@@ -582,7 +582,7 @@ def store_embeddings(chunk_ids, vectors):
     faiss.write_index(index, str(DENSE_INDEX_PATH))
     log(f"wrote dense index to {DENSE_INDEX_PATH}")
 
-    with open(DENSE_INDEX_ID_MAPPING, "w") as file:
+    with open(DENSE_INDEX_ID_MAPPING, "w", encoding="utf-8") as file:
         json.dump(chunk_ids, file)
     log(f"wrote id mapping to {DENSE_INDEX_ID_MAPPING}")
 
@@ -606,7 +606,7 @@ def load_dense_index():
       A tuple (index, chunk_ids) where chunk_ids[i] names FAISS row i.
     """
     index = faiss.read_index(str(DENSE_INDEX_PATH))
-    with open(DENSE_INDEX_ID_MAPPING) as file:
+    with open(DENSE_INDEX_ID_MAPPING, encoding="utf-8") as file:
         chunk_ids = json.load(file)
     return index, chunk_ids
 
