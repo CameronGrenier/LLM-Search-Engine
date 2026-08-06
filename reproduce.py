@@ -8,6 +8,8 @@ import sys
 import time
 from pathlib import Path
 
+from config import RANDOM_SEED
+
 
 DERIVED_PATHS = [
     Path("data/corpus"),
@@ -126,7 +128,9 @@ def validate_outputs() -> None:
 def main() -> None:
     overall_start = time.perf_counter()
     environment = os.environ.copy()
-    environment["PYTHONHASHSEED"] = "42"
+    # Must be set in the child's environment: CPython reads it at interpreter
+    # startup, so a stage cannot set it for itself.
+    environment["PYTHONHASHSEED"] = str(RANDOM_SEED)
     environment["TOKENIZERS_PARALLELISM"] = "false"
     clean_derived_files()
     for number, (name, arguments) in enumerate(

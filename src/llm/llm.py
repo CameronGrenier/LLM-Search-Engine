@@ -43,6 +43,7 @@ from transformers import (  # noqa: E402
 )
 from src.retrieval.dense import get_device, dense_search  # noqa: E402
 from src.retrieval.bm25 import bm25_search  # noqa: E402
+from src.seeding import seed_everything  # noqa: E402
 
 # ============================================================
 # Run configuration
@@ -76,6 +77,8 @@ CITATION_RE = re.compile(r"\[(\d+)\]")
 # Model
 # ============================================================
 
+seed_everything()
+
 device = get_device()
 MODEL = AutoModelForCausalLM.from_pretrained(GENERATION_MODEL, dtype="auto").to(device)
 TOKENIZER = AutoTokenizer.from_pretrained(GENERATION_MODEL)
@@ -84,65 +87,27 @@ MODEL.eval()
 
 GROUNDED_ANSWER_SYSTEM = """Answer the question using only the supplied numbered passages.
 
-Rules:
+If the passages do not explicitly answer the question, your entire reply must be
+this exact sentence:
+
+I don't know
+
+Write it exactly that way: a straight apostrophe, no trailing period, no citation,
+no explanation, and nothing before or after it.
+
+Otherwise, answer the question and follow these rules:
 - Answer every part of the question that is explicitly supported.
 - Place an inline citation such as [1] immediately after every factual sentence.
 - Use only passage numbers that were supplied.
 - Do not use prior knowledge.
 - Do not infer prop names, defaults, variants, or component behaviour from related components.
 - Do not treat a passing mention, dependency list, or example name as an answer.
+- Never reply with citation markers alone; every reply must contain a sentence.
 - Keep the answer concise."""
 
 
-VERIFY_SYSTEM = """Verify the candidate answer using only the cited numbered passages.
-
-Reply exactly YES only when all of the following are true:
-- Every factual claim is explicitly supported by a cited passage.
-- The candidate addresses every part of the question.
-- The cited passages concern the same component, prop, or feature asked about.
-- The candidate does not infer an answer from a passing mention, dependency list, or related component.
-
-Otherwise reply exactly NO.
-Do not explain the decision."""
-
-
-UNCERTAINTY_RE = re.compile(
-    r"\b("
-    r"i don['’]?t know|"
-    r"cannot (?:determine|answer|tell)|"
-    r"can['’]?t (?:determine|answer|tell)|"
-    r"insufficient (?:information|evidence)|"
-    r"not enough (?:information|evidence)|"
-    r"do not contain (?:information|an answer)|"
-    r"does not contain (?:information|an answer)|"
-    r"does not exist|"
-    r"does not explicitly mention|"
-    r"is not (?:stated|specified|mentioned|provided)|"
-    r"are not (?:stated|specified|mentioned|provided)|"
-    r"no (?:relevant )?(?:information|evidence) is provided"
-    r")\b",
-    re.IGNORECASE,
-)
-
-
-SUSPICIOUS_RE = re.compile(
-    r"\b("
-    r"one other|"
-    r"four variants|"
-    r"floating action button|"
-    r"refer to the following steps|"
-    r"ensure your project includes|"
-    r"based on the provided information|"
-    r"according to the provided passages"
-    r")\b",
-    re.IGNORECASE,
-)
-
-
-NAIVE_SYSTEM = (
-    "Answer the question about Material UI as accurately as you can. "
-    "Keep it concise and to the point."
-)
+NAIVE_SYSTEM = """Answer the question about Material UI as accurately as you can. \
+Keep it concise and to the point."""
 
 
 # ============================================================
@@ -264,25 +229,32 @@ def hydrate(chunk: dict, demos: dict[str, dict]) -> str:
 
 
 def format_context(results: list[dict], demos: dict[str, dict]) -> str:
-    """Format retrieved raw chunks as numbered passages.
+    """Format retrieved chunks as numbered passages carrying their demo code.
 
-    Demo source is not reattached because large code samples add repeated and
-    unrelated content to the generation prompt.
+    The split between what is indexed and what is prompted is deliberate.
+    Demo source stays out of the index, because every MUI demo opens with a
+    near-identical import and export block and hundreds of chunks sharing that
+    boilerplate compress the distances retrieval depends on. It goes into the
+    prompt, because "how do I do X in MUI" is answered by the code, not by the
+    prose describing it.
+
+    The code is appended inside the passage that referenced it rather than as
+    a separate block, so a citation of [n] still points at one source.
 
     Args:
       results: Result dicts from a retrieval function.
-      demos: Retained for compatibility with existing callers; unused.
+      demos: The demo store from load_demos.
 
     Returns:
-      Numbered raw chunk passages with chunk IDs retained for traceability.
+      Numbered passages, each holding its chunk id, chunk text, and any demo
+      source the chunk referenced, as fenced code blocks.
     """
-    _ = demos
     blocks = []
 
     for number, result in enumerate(results, start=1):
         blocks.append(
             f"[{number}] ({result['chunk_id']})\n"
-            f"{result['text']}"
+            f"{hydrate(result, demos)}"
         )
 
     return "\n\n".join(blocks)
@@ -338,7 +310,10 @@ def build_citations(results: list[dict], answer_text: str) -> list[dict]:
             {
                 "passage_number": number,
                 "chunk_id": result["chunk_id"],
-                "doc_id": result.get("doc_id"),
+                # Subscripted, not .get(). A retriever that stops emitting
+                # doc_id should fail here rather than write null into every
+                # citation record, which is how this went unnoticed before.
+                "doc_id": result["doc_id"],
                 "score": float(result.get("score", 0.0)),
                 "cited_in_text": number in cited,
                 "source": {
@@ -422,25 +397,29 @@ def answer_naive(question: dict) -> dict:
     }
 
 
-def candidate_needs_verification(
-    question_text: str,
-    candidate: str,
-    results: list[dict],
-    cited_numbers: set[int],
-) -> bool:
-    """Return whether a candidate needs an additional grounding check."""
-    _ = question_text, results, cited_numbers
-
-    candidate_tokens = re.findall(r"\b\w+\b", candidate)
-
-    if len(candidate_tokens) < 6:
-        return True
-
-    return bool(SUSPICIOUS_RE.search(candidate))
-
-
 def answer_rag(question: dict, retriever: str, k: int = TOP_K) -> dict:
-    """Answer one question using conservative grounded generation."""
+    """Answer one question from retrieved context, returning the model's reply.
+
+    One generation call, one answer, recorded verbatim. Nothing between the
+    model and the result file rewrites, re-scores, or suppresses what it said,
+    so a refusal is a refusal the model chose to produce, which is what
+    GROUNDED_ANSWER_SYSTEM instructs it to do when the passages fall short.
+
+    Grounding is judged by a human, in results/generation_manual_review.csv.
+    An earlier version of this function asked the same model to verify its own
+    answers and rewrote the ones it rejected. That gated the output on a judge
+    no more reliable than the thing it judged, and it made the inline-citation
+    rate true by construction. A person reads the passages instead.
+
+    Args:
+      question: A question dict with question_id and question_text.
+      retriever: Key into RETRIEVERS naming the context source.
+      k: Number of chunks to retrieve.
+
+    Returns:
+      An answer record carrying the answer and one citation entry per
+      retrieved passage.
+    """
     search = RETRIEVERS[retriever]
     results = search(question["question_text"], k=k)
     context = format_context(results, DEMOS)
@@ -452,73 +431,16 @@ def answer_rag(question: dict, retriever: str, k: int = TOP_K) -> dict:
             "--- end context\n"
         )
 
-    candidate_prompt = (
+    answer_prompt = (
         f"Numbered passages:\n{context}\n\n"
         f"Question:\n{question['question_text']}\n\n"
         "Answer:"
     )
 
-    candidate = ask(
+    answer_text = ask(
         GROUNDED_ANSWER_SYSTEM,
-        candidate_prompt,
+        answer_prompt,
     ).strip()
-
-    cited_numbers = parse_cited_numbers(
-        candidate,
-        len(results),
-    )
-
-    verification = "NOT RUN"
-
-    if not candidate:
-        final_answer = "I don't know"
-        decision = "empty candidate"
-
-    elif UNCERTAINTY_RE.search(candidate):
-        final_answer = "I don't know"
-        decision = "uncertainty language"
-
-    elif not cited_numbers:
-        final_answer = "I don't know"
-        decision = "no valid inline citation"
-
-    elif candidate_needs_verification(
-        question["question_text"],
-        candidate,
-        results,
-        cited_numbers,
-    ):
-        cited_context = "\n\n".join(
-            (
-                f"[{number}] "
-                f"({results[number - 1]['chunk_id']})\n"
-                f"{results[number - 1]['text']}"
-            )
-            for number in sorted(cited_numbers)
-        )
-
-        verification_prompt = (
-            f"Question:\n{question['question_text']}\n\n"
-            f"Candidate answer:\n{candidate}\n\n"
-            f"Cited numbered passages:\n{cited_context}\n\n"
-            "Decision:"
-        )
-
-        verification = ask(
-            VERIFY_SYSTEM,
-            verification_prompt,
-        ).strip().upper()
-
-        if re.fullmatch(r"YES[.!]?", verification):
-            final_answer = candidate
-            decision = "accepted by verifier"
-        else:
-            final_answer = "I don't know"
-            decision = "rejected by verifier"
-
-    else:
-        final_answer = candidate
-        decision = "accepted without verifier"
 
     return {
         "answer_id": f"{question['question_id']}-rag-{retriever}",
@@ -526,11 +448,8 @@ def answer_rag(question: dict, retriever: str, k: int = TOP_K) -> dict:
         "question_text": question["question_text"],
         "mode": "rag",
         "retriever": retriever,
-        "answer_text": final_answer,
-        "candidate_answer": candidate,
-        "verification": verification,
-        "decision": decision,
-        "citations": build_citations(results, final_answer),
+        "answer_text": answer_text,
+        "citations": build_citations(results, answer_text),
     }
 
 

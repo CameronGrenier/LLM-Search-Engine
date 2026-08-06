@@ -114,6 +114,7 @@ class BM25Retriever():
             results.append(
                 {
                     "chunk_id": chunk["chunk_id"],
+                    "doc_id": chunk["doc_id"],
                     "score": float(score),
                     "text": chunk["text"],
                     "metadata": chunk["metadata"],

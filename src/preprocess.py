@@ -289,11 +289,11 @@ def resolve_directives(
             missing.append(demo_ref)
             return ""
 
-        demo_id = path_index[resolved]  # flat filename, unique by construction
+        demo_id = path_index[resolved]  # type: ignore # flat filename, unique by construction
         demos[demo_id] = {
             "demo_id": demo_id,
             "url": resolved,
-            "lang": _fence_language(resolved),
+            "lang": _fence_language(resolved), # type: ignore
             "code": source.strip(),
         }
         return "\n\n" + DEMO_MARKER.format(demo_id=demo_id) + "\n\n"

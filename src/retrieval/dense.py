@@ -91,6 +91,7 @@ from config import (  # noqa: E402
 )
 from src.corpus_io import load_chunks, load_docs  # noqa: E402
 from src.chunk import normalize, strip_demo_markers  # noqa: E402
+from src.seeding import seed_everything  # noqa: E402
 
 # Which adapter this process runs with. Indexing leaves the default in place;
 # the search entry point sets the variable before importing this module.
@@ -110,16 +111,18 @@ def log(message):
 
 
 def get_device():
-    """Pick the best available torch device.
+  """Pick the best available torch device.
 
-    Returns:
-      One of "cuda", "mps" or "cpu", in order of preference.
-    """
-    if torch.cuda.is_available():
-        return "cuda"
-    if torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
+  Returns:
+    One of "cuda", "mps" or "cpu", in order of preference.
+  """
+  if torch.cuda.is_available():
+    return "cuda"
+  if torch.backends.mps.is_available():
+    return "mps"
+  log(f"WARNING: no GPU backend found (torch={torch.__version__}, "
+      f"cuda_build={torch.version.cuda}) — falling back to CPU")
+  return "cpu"
 
 
 def verify_adapters():
@@ -208,6 +211,7 @@ def load_model(adapter_name):
 
 
 log("initialising dense retrieval module")
+log(f"seeded all generators with {seed_everything()}")
 tokenizer, model, device = load_model(ACTIVE_ADAPTER)
 
 if USE_ADAPTERS and not adapter_is_active(ACTIVE_ADAPTER):
@@ -653,8 +657,8 @@ def dense_search(query, k=10, index=None, chunk_ids=None, by_id=None):
       by_id: Optional preloaded chunk_id to chunk record mapping.
 
     Returns:
-      List of result dicts with chunk_id, score, text and metadata, ordered by
-      descending score.
+      List of result dicts with chunk_id, doc_id, score, text and metadata,
+      ordered by descending score.
     """
     if USE_ADAPTERS and ACTIVE_ADAPTER != QUERY_ADAPTER:
         log(
@@ -677,6 +681,7 @@ def dense_search(query, k=10, index=None, chunk_ids=None, by_id=None):
         results.append(
             {
                 "chunk_id": chunk_id,
+                "doc_id": chunk["doc_id"],
                 "score": float(score),
                 "text": chunk["text"],
                 "metadata": chunk["metadata"],
