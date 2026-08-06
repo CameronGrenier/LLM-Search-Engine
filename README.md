@@ -87,7 +87,27 @@ The same generation model and settings are used for the naive, BM25 RAG, and den
 
 ## Evaluation set
 
-The evaluation set is stored in `data/questions.jsonl`.
+The evaluation set is stored in `data/questions.jsonl`, one JSON object per line.
+
+Each line holds the question and its gold data together. There is no separate
+gold file: `reference_answer` is the gold answer and `gold_chunk_ids` lists the
+chunks that support it.
+
+    {
+      "question_id": 7,
+      "question_text": "Which prop limits how many avatars an AvatarGroup shows, and what is its default value?",
+      "reference_answer": "The max prop limits how many avatars an AvatarGroup shows, and its default value is 5.",
+      "gold_chunk_ids": ["api__avatar-group__chunk_0001"],
+      "type": "factoid"
+    }
+
+This one file is read by every stage that needs it: `src/llm/llm.py` for the
+questions, and `src/evaluate/retrieval_metrics.py`, `generation_metrics.py`, and
+`diagnostic.py` for the gold answers and gold chunk IDs.
+
+Note that `config.py` also defines `EVAL_PATH` pointing at `data/eval/gold.jsonl`.
+That file does not exist and nothing imports the constant. It is a leftover from
+an earlier layout, not the gold set.
 
 It contains 13 questions:
 
@@ -95,7 +115,7 @@ It contains 13 questions:
 - 3 multi-hop questions
 - 3 unanswerable questions
 
-The multi-hop questions require evidence from multiple chunks. The unanswerable questions use `I don't know` as the reference answer.
+The multi-hop questions require evidence from multiple chunks. The unanswerable questions have an empty `gold_chunk_ids` and use `I don't know` as the reference answer.
 
 ## Requirements
 
