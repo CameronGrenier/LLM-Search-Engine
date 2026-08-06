@@ -107,7 +107,8 @@ Otherwise, answer the question and follow these rules:
 
 
 NAIVE_SYSTEM = """Answer the question about Material UI as accurately as you can. \
-Keep it concise and to the point."""
+Keep it concise and to the point.
+If you do not know the answer, respond with \"I dont know\" """
 
 
 # ============================================================
